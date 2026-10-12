@@ -148,10 +148,11 @@ export const MessageBubble = memo(function MessageBubble({
       <div className={`flex min-w-0 max-w-[min(78%,520px)] items-center gap-1 ${own ? "flex-row-reverse" : ""}`}>
         <div className="relative min-w-0">
           <div
-            className={`relative overflow-hidden ${
-              jumbo ? "" : own ? "bg-bubble-out text-bubble-out-text [--check-cutout:var(--ultramarine)]" : "bg-bubble-in text-bubble-in-text"
+            className={`relative ${
+              // Jumbo emoji have no bubble, so nothing should be clipped to its rounded corners.
+              jumbo ? "pb-1" : own ? "overflow-hidden bg-bubble-out text-bubble-out-text [--check-cutout:var(--ultramarine)]" : "overflow-hidden bg-bubble-in text-bubble-in-text"
             } ${failed ? "opacity-70" : ""}`}
-            style={{ borderRadius: radius }}
+            style={jumbo ? undefined : { borderRadius: radius }}
           >
             {isGroup && !own && firstInGroup && !jumbo && (
               <div
