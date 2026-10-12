@@ -18,7 +18,7 @@ export const SHORTCUTS: { keys: string[]; description: string }[] = [
   { keys: [MOD, "U"], description: "Attach file" },
   { keys: [MOD, ","], description: "Preferences" },
   { keys: [MOD, "/"], description: "Show keyboard shortcuts" },
-  { keys: ["Esc"], description: "Cancel reply / close panel" },
+  { keys: ["Esc"], description: "Cancel reply / close panel / close chat" },
   { keys: ["Enter"], description: "Send message" },
   { keys: ["Shift", "Enter"], description: "New line" },
 ];
@@ -73,6 +73,7 @@ export function useKeyboardShortcuts() {
         else if (chat.selectedId && chat.replyTo[chat.selectedId]) chat.setReplyTo(chat.selectedId, null);
         else if (ui.detailsOpen) ui.setDetailsOpen(false);
         else if (ui.pane !== "list") ui.setPane("list");
+        else if (chat.selectedId) chat.select(null);
       }
     };
     window.addEventListener("keydown", onKey);
