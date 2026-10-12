@@ -8,7 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     """Runtime configuration, overridable through environment variables or a .env file."""
 
-    model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", extra="ignore")
+    # Values pasted into a hosting dashboard often carry a stray space or newline.
+    model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", extra="ignore", str_strip_whitespace=True)
 
     database_url: str = f"sqlite:///{(BASE_DIR / 'signal.db').as_posix()}"
     # Hosted libSQL (Turso) database; when set it is used instead of DATABASE_URL.
