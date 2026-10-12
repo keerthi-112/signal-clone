@@ -5,8 +5,11 @@ from pathlib import Path
 # Configure an isolated database before the app is imported.
 _tmp = Path(tempfile.mkdtemp(prefix="signal-test-"))
 os.environ["DATABASE_URL"] = f"sqlite:///{(_tmp / 'test.db').as_posix()}"
-os.environ["MEDIA_DIR"] = str(_tmp / "media")
 os.environ["SEED_ON_STARTUP"] = "false"
+# Tests drop every table, so never inherit a hosted database from the environment or .env;
+# a throwaway Turso database can be targeted explicitly via TEST_TURSO_DATABASE_URL.
+os.environ["TURSO_DATABASE_URL"] = os.environ.get("TEST_TURSO_DATABASE_URL", "")
+os.environ["TURSO_AUTH_TOKEN"] = os.environ.get("TEST_TURSO_AUTH_TOKEN", "")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

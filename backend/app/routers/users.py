@@ -48,23 +48,21 @@ def update_me(
 def upload_avatar(
     file: UploadFile = File(...), me: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> MeOut:
-    rel, _ = save_upload(file, "avatars", allowed_types=IMAGE_TYPES, max_mb=5)
-    old = me.avatar_path
+    rel, _ = save_upload(db, file, "avatars", allowed_types=IMAGE_TYPES, max_mb=5)
+    delete_media(db, me.avatar_path)
     me.avatar_path = rel
     db.add(me)
     db.commit()
-    delete_media(old)
     _broadcast_profile(db, me)
     return me_out(me)
 
 
 @router.delete("/me/avatar", response_model=MeOut)
 def remove_avatar(me: User = Depends(get_current_user), db: Session = Depends(get_db)) -> MeOut:
-    old = me.avatar_path
+    delete_media(db, me.avatar_path)
     me.avatar_path = None
     db.add(me)
     db.commit()
-    delete_media(old)
     _broadcast_profile(db, me)
     return me_out(me)
 

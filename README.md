@@ -8,7 +8,7 @@ group admin controls, and Signal's desktop look and feel (light and dark).
 |-----------|------|
 | Frontend  | Next.js 16 (App Router, TypeScript), React 19, Tailwind CSS 4, Zustand, lucide-react |
 | Backend   | Python 3.12+, FastAPI, SQLAlchemy 2, Pydantic 2, Uvicorn |
-| Database  | SQLite (WAL mode, foreign keys enforced) |
+| Database  | SQLite (WAL mode, foreign keys enforced); hosted on Turso (libSQL, SQLite-compatible) in production |
 | Real-time | Native WebSockets (FastAPI ⇄ browser) |
 
 ```
@@ -232,7 +232,8 @@ conversations ──< messages ──┬──< message_receipts
 | `messages` | `conversation_id` FK, `sender_id` FK NULL, `kind` CHECK('text','system'), `client_id`, `body`, `meta` JSON, `reply_to_id` FK, `attachment_id` FK, `created_at`, `expires_at` (indexed) | UNIQUE(`sender_id`, `client_id`) for idempotency; index (`conversation_id`, `id`) for keyset pagination. System notices store structured `meta` (e.g. `{"event": "members_added", "actor_id": 1, "user_ids": [4]}`) and are rendered relative to the viewer ("You added Maya"). |
 | `message_receipts` | PK(`message_id`, `user_id`), `delivered_at`, `read_at` | One row per recipient; index (`user_id`, `delivered_at`) for flushing pending deliveries. |
 | `reactions` | PK(`message_id`, `user_id`), `emoji` | The primary key enforces Signal's one-reaction-per-person rule. |
-| `attachments` | `key` UNIQUE (random), `uploader_id` FK, `file_name`, `content_type`, `size_bytes` | Files are stored on disk under `media/`. |
+| `attachments` | `key` UNIQUE (random), `uploader_id` FK, `file_name`, `content_type`, `size_bytes` | Metadata; the bytes live in `media_files` under `attachments/<key>`. |
+| `media_files` | `path` PK, `content_type`, `data` BLOB | Uploaded bytes (avatars and attachments), keyed by the path in their URLs. Stored in the database so uploads persist wherever the data does. |
 
 All foreign keys declare `ON DELETE` behaviour (CASCADE for owned rows, SET NULL for senders, quotes and attachments).
 
@@ -287,15 +288,30 @@ Client → server: `ping`, `typing {conversation_id, is_typing}`, `delivered {me
 
 ## Deployment
 
-**Backend on Render.** Use the included `render.yaml` blueprint (root dir `backend/`), and set
-`CORS_ORIGINS` to the frontend URL.
+**Database on Turso.** The free Render instance has an ephemeral filesystem, so a local SQLite
+file would be wiped on every restart or redeploy. In production the backend connects to a hosted
+[Turso](https://turso.tech) database instead. Turso runs libSQL, a fork of SQLite, so the schema,
+SQL and SQLAlchemy dialect are unchanged; only the driver differs (`app/turso.py`). Uploaded files
+are stored in the `media_files` table, so they persist too.
+
+```bash
+turso db create signal-clone
+turso db show signal-clone --url      # → TURSO_DATABASE_URL
+turso db tokens create signal-clone   # → TURSO_AUTH_TOKEN
+```
+
+**Backend on Render.** Use the included `render.yaml` blueprint (root dir `backend/`) and set
+`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and `CORS_ORIGINS` (the frontend URL). Tables are created
+and demo data is seeded on first start; seeding is skipped once the database has users, so
+restarts never overwrite real data. Without the Turso variables the backend uses the local SQLite
+file from `DATABASE_URL`, as in development.
 
 **Frontend on Vercel.** Import the repo with root directory `frontend/` and set
-`NEXT_PUBLIC_API_URL` to the backend URL (e.g. `https://signal-clone-api.onrender.com`).
+`NEXT_PUBLIC_API_URL` to the backend URL (e.g. `https://signal-clone-api.onrender.com`). The
+WebSocket URL is derived from it (`https` → `wss`).
 
-> On Render's free tier the filesystem is ephemeral, so the SQLite file and uploads reset on
-> redeploy or restart. The app re-seeds itself on startup, so the demo is always usable. For
-> durable storage, attach a persistent disk and point `DATABASE_URL` / `MEDIA_DIR` at it.
+> Render's free instances sleep after 15 minutes without traffic, and the first request then takes
+> up to a minute. A scheduled ping to `/api/health` (e.g. every 10 minutes) keeps the demo awake.
 
 ---
 

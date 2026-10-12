@@ -6,6 +6,7 @@ services:
     runtime: python
     rootDir: backend
     plan: free
+    region: virginia
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers
     healthCheckPath: /api/health
@@ -14,5 +15,10 @@ services:
         value: 3.12.7
       - key: CORS_ORIGINS
         sync: false # set to your Vercel URL, e.g. https://signal-clone.vercel.app
+      # Hosted libSQL (Turso) database, so data survives restarts of the free instance.
+      - key: TURSO_DATABASE_URL
+        sync: false # e.g. libsql://signal-clone-<org>.turso.io
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: SEED_ON_STARTUP
         value: "true"

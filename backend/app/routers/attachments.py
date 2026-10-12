@@ -1,18 +1,16 @@
-"""Attachment upload (two-step send: upload file, then send a message referencing it)."""
-
-from pathlib import Path
+"""Attachment upload (two-step send: upload file, then send a message referencing it) and
+media downloads (attachments and avatars)."""
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import settings
 from ..database import get_db
 from ..models import Attachment, User
 from ..schemas import AttachmentOut
 from ..security import get_current_user
-from ..services.media import IMAGE_TYPES, save_upload
+from ..services.media import media_response, save_upload
 from ..services.serializers import attachment_out
 
 router = APIRouter(tags=["attachments"])
@@ -22,9 +20,9 @@ router = APIRouter(tags=["attachments"])
 def upload_attachment(
     file: UploadFile = File(...), me: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> AttachmentOut:
-    rel, size = save_upload(file, "attachments")
+    rel, size = save_upload(db, file, "attachments")
     attachment = Attachment(
-        key=Path(rel).name,
+        key=rel.removeprefix("attachments/"),
         uploader_id=me.id,
         file_name=(file.filename or "file")[:255],
         content_type=file.content_type or "application/octet-stream",
@@ -36,21 +34,14 @@ def upload_attachment(
 
 
 @router.get("/media/attachments/{key}", include_in_schema=False)
-def download_attachment(key: str, db: Session = Depends(get_db)) -> FileResponse:
+def download_attachment(key: str, db: Session = Depends(get_db)) -> Response:
     """Served by unguessable key so <img src> works without auth headers."""
     attachment = db.scalar(select(Attachment).where(Attachment.key == key))
-    path = settings.media_dir / "attachments" / key
-    if attachment is None or not path.is_file():
+    if attachment is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
-    # Only raster images render inline; everything else (incl. SVG/HTML) is forced to download.
-    inline = attachment.content_type in IMAGE_TYPES
-    return FileResponse(
-        path,
-        media_type=attachment.content_type if inline else "application/octet-stream",
-        filename=attachment.file_name,
-        content_disposition_type="inline" if inline else "attachment",
-        headers={
-            "Cache-Control": "private, max-age=31536000, immutable",
-            "X-Content-Type-Options": "nosniff",
-        },
-    )
+    return media_response(db, f"attachments/{key}", file_name=attachment.file_name)
+
+
+@router.get("/media/avatars/{name}", include_in_schema=False)
+def download_avatar(name: str, db: Session = Depends(get_db)) -> Response:
+    return media_response(db, f"avatars/{name}")

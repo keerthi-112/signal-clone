@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import Base, SessionLocal, engine
@@ -41,7 +40,6 @@ async def _expiry_loop() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
-    settings.media_dir.mkdir(parents=True, exist_ok=True)
     if settings.seed_on_startup and seed_if_empty():
         log.info("seeded demo data")
     manager.bind_loop(asyncio.get_running_loop())
@@ -65,9 +63,6 @@ app.add_middleware(
 
 for module in (auth, users, contacts, conversations, messages, attachments, search, ws):
     app.include_router(module.router)
-
-settings.media_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
 
 
 @app.get("/api/health", tags=["meta"])

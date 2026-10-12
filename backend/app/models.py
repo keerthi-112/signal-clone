@@ -21,6 +21,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -133,6 +134,21 @@ class Attachment(Base):
     file_name: Mapped[str] = mapped_column(String(255))
     content_type: Mapped[str] = mapped_column(String(127))
     size_bytes: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class MediaFile(Base):
+    """Uploaded file contents (avatars and attachments).
+
+    Kept in the database rather than on local disk so uploads persist wherever the database
+    does. `path` is what avatar / attachment URLs reference, e.g. "avatars/<random>.png".
+    """
+
+    __tablename__ = "media_files"
+
+    path: Mapped[str] = mapped_column(String(255), primary_key=True)
+    content_type: Mapped[str] = mapped_column(String(127))
+    data: Mapped[bytes] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 

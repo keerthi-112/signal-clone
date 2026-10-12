@@ -4,8 +4,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 backend/signal.db*
-backend/media/*
-!backend/media/.gitkeep
+backend/media/
 backend/.env
 
 # Node / Next.js

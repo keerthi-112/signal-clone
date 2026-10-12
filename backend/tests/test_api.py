@@ -180,6 +180,42 @@ def test_attachment_upload_and_send(client):
     assert "attachment" in dl.headers["content-disposition"]
 
 
+def test_image_attachment_renders_inline(client):
+    a = register(client, "+15550000001", "Ada")
+    png = b"\x89PNG\r\n\x1a\n" + bytes(range(256)) * 64
+    up = client.post(
+        "/api/attachments", files={"file": ("photo.png", png, "image/png")}, headers=a["headers"]
+    ).json()
+    dl = client.get(up["url"])
+    assert dl.status_code == 200 and dl.content == png
+    assert dl.headers["content-type"] == "image/png"
+    assert dl.headers["content-disposition"].startswith("inline")
+    assert client.get("/media/attachments/missing.png").status_code == 404
+
+
+def test_avatar_upload_replace_and_remove(client):
+    a = register(client, "+15550000001", "Ada")
+    first = client.post(
+        "/api/users/me/avatar", files={"file": ("a.png", b"first", "image/png")}, headers=a["headers"]
+    ).json()["avatar_url"]
+    assert client.get(first).content == b"first"
+
+    second = client.post(
+        "/api/users/me/avatar", files={"file": ("b.png", b"second", "image/png")}, headers=a["headers"]
+    ).json()["avatar_url"]
+    assert client.get(second).content == b"second"
+    assert client.get(first).status_code == 404  # replaced avatar is deleted
+
+    rejected = client.post(
+        "/api/users/me/avatar", files={"file": ("x.txt", b"text", "text/plain")}, headers=a["headers"]
+    )
+    assert rejected.status_code == 415
+
+    removed = client.delete("/api/users/me/avatar", headers=a["headers"]).json()
+    assert removed["avatar_url"] is None
+    assert client.get(second).status_code == 404
+
+
 def test_disappearing_messages_expire(client):
     a = register(client, "+15550000001", "Ada")
     b = register(client, "+15550000002", "Bob")

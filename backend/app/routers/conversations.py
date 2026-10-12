@@ -110,11 +110,11 @@ def upload_group_avatar(
 ):
     member = svc.get_membership(db, conversation_id, me.id)
     svc.require_admin(member)
-    rel, _ = save_upload(file, "avatars", allowed_types=IMAGE_TYPES, max_mb=5)
+    rel, _ = save_upload(db, file, "avatars", allowed_types=IMAGE_TYPES, max_mb=5)
     conversation = member.conversation
-    old, conversation.avatar_path = conversation.avatar_path, rel
+    delete_media(db, conversation.avatar_path)
+    conversation.avatar_path = rel
     db.commit()
-    delete_media(old)
     svc.emit_conversation(db, conversation)
     return svc.conversation_out(db, conversation, me.id)
 

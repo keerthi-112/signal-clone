@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", extra="ignore")
 
     database_url: str = f"sqlite:///{(BASE_DIR / 'signal.db').as_posix()}"
-    media_dir: Path = BASE_DIR / "media"
+    # Hosted libSQL (Turso) database; when set it is used instead of DATABASE_URL.
+    turso_database_url: str = ""
+    turso_auth_token: str = ""
     # Comma-separated list of allowed frontend origins.
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     # Phone verification is mocked: every number accepts this code.

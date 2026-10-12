@@ -7,6 +7,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.types import TypeDecorator
 
 from .config import settings
+from .turso import make_libsql_engine
 
 
 def utcnow() -> datetime:
@@ -53,7 +54,23 @@ def make_engine(url: str) -> Engine:
     return engine
 
 
-engine = make_engine(settings.database_url)
+def make_turso_engine(url: str, auth_token: str) -> Engine:
+    engine = make_libsql_engine(url, auth_token)
+
+    @event.listens_for(engine, "connect")
+    def _foreign_keys(dbapi_conn, _record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    return engine
+
+
+engine = (
+    make_turso_engine(settings.turso_database_url, settings.turso_auth_token)
+    if settings.turso_database_url
+    else make_engine(settings.database_url)
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
