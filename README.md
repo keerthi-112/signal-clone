@@ -4,6 +4,9 @@ A functional clone of the Signal messenger: phone-number onboarding, a conversat
 one-on-one and group messaging with sent / delivered / read ticks, typing indicators, presence,
 group admin controls, and Signal's desktop look and feel (light and dark).
 
+**Live demo:** https://signal-clone-fawn.vercel.app (sign in with a demo account below; the code is always `123456`).
+The API runs at https://signal-clone-api-7mac.onrender.com ([interactive docs](https://signal-clone-api-7mac.onrender.com/docs)).
+
 | Layer     | Tech |
 |-----------|------|
 | Frontend  | Next.js 16 (App Router, TypeScript), React 19, Tailwind CSS 4, Zustand, lucide-react |
