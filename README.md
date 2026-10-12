@@ -69,7 +69,7 @@ two different users, for example Alex and Priya. A new phone number creates a ne
 cd backend && pytest -q
 ```
 
-The 15 API and WebSocket tests cover:
+The 18 API, WebSocket and configuration tests cover:
 
 - auth
 - contacts
@@ -82,6 +82,7 @@ The 15 API and WebSocket tests cover:
 - group admin rules
 - search
 - the full real-time flow: presence → typing → push → delivered → read
+- settings pasted with stray whitespace
 
 ---
 
@@ -313,8 +314,16 @@ file from `DATABASE_URL`, as in development.
 `NEXT_PUBLIC_API_URL` to the backend URL (e.g. `https://signal-clone-api.onrender.com`). The
 WebSocket URL is derived from it (`https` → `wss`).
 
-> Render's free instances sleep after 15 minutes without traffic, and the first request then takes
-> up to a minute. A scheduled ping to `/api/health` (e.g. every 10 minutes) keeps the demo awake.
+**Keep-alive (cron-job.org).** Render's free instances sleep after 15 minutes without traffic, and
+the first request then takes up to a minute while the server starts again. A free scheduled job on
+[cron-job.org](https://cron-job.org) sends `GET https://signal-clone-api-7mac.onrender.com/api/health`
+every 10 minutes, so the idle timer never runs out and the demo stays responsive.
+
+- `/api/health` (in `app/main.py`) just returns `{"status": "ok"}`: it needs no login and doesn't
+  touch the database, so the ping is cheap and changes no data.
+- It answers `200 OK`, so the job's history also works as a simple uptime check.
+- Render calls the same endpoint after every deploy (`healthCheckPath` in `render.yaml`).
+- The job is configured on cron-job.org only; nothing in this repository runs it.
 
 ---
 
